@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Rishika’s Recipe Hub</title>
+  <link href="https://fonts.googleapis.com/css?family=Nunito+Sans:400,600,700" rel="stylesheet" />
+  <style>
+    body {
+      font-family: 'Nunito Sans', sans-serif;
+      background-color: #fff8f0;
+      margin: 0;
+      padding: 0 2rem;
+      color: #333;
+    }
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1rem 0;
+      background-color: #ffe5d9;
+      border-radius: 12px;
+      margin-bottom: 2rem;
+    }
+    header h1 {
+      margin: 0;
+      color: #ff6f61;
+    }
+    form {
+      display: flex;
+      gap: 0.5rem;
+    }
+    input {
+      padding: 0.5rem 1rem;
+      border-radius: 8px;
+      border: 2px solid #ff6f61;
+      outline: none;
+    }
+    input:focus {
+      border-color: #e65b50;
+    }
+    button {
+      padding: 0.5rem 1rem;
+      border-radius: 8px;
+      border: none;
+      background-color: #ff6f61;
+      color: #fff;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #e65b50;
+    }
+    .results {
+      list-style: none;
+      padding: 0;
+    }
+    .results li {
+      background: #fff0e5;
+      margin: 0.5rem 0;
+      padding: 0.5rem;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    .results li:hover {
+      background: #ffe5d9;
+    }
+    .recipe {
+      margin-top: 2rem;
+      padding: 1rem;
+      border: 1px solid #ff6f61;
+      border-radius: 12px;
+      background-color: #fff0e5;
+    }
+    footer {
+      text-align: center;
+      margin: 2rem 0;
+      font-weight: 600;
+    }
+    footer a {
+      color: #ff6f61;
+      text-decoration: none;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Rishika’s Recipe Hub</h1>
+    <form id="search-form">
+      <input type="text" id="search-input" placeholder="Search recipes..." />
+      <button type="submit">Search</button>
+    </form>
+  </header>
+
+  <ul class="results" id="results"></ul>
+  <div class="recipe" id="recipe">
+    <p>Start by searching for a recipe!</p>
+  </div>
+
+  <footer>
+    &copy; 2026 <a href="#">Rishika Singhal</a> | Portfolio project
+  </footer>
+
+  <script>
+    const searchForm = document.getElementById('search-form');
+    const searchInput = document.getElementById('search-input');
+    const resultsContainer = document.getElementById('results');
+    const recipeContainer = document.getElementById('recipe');
+
+    const timeout = s => new Promise((_, reject) =>
+      setTimeout(() => reject(new Error(`Request took too long! Timeout after ${s} second`)), s * 1000)
+    );
+
+    // Fetch recipes by search query
+    searchForm.addEventListener('submit', async function(e) {
+      e.preventDefault();
+      const query = searchInput.value.trim();
+      if (!query) return alert('Please enter a recipe name!');
+      
+      resultsContainer.innerHTML = '<li>Loading...</li>';
+      recipeContainer.innerHTML = '<p>Searching for recipes...</p>';
+
+      try {
+        const res = await Promise.race([
+          fetch(`https://forkify-api.herokuapp.com/api/v2/recipes?search=${query}`),
+          timeout(10)
+        ]);
+        const data = await res.json();
+        const recipes = data.data.recipes;
+
+        if (recipes.length === 0) {
+          resultsContainer.innerHTML = '<li>No recipes found.</li>';
+          recipeContainer.innerHTML = '';
+          return;
+        }
+
+        // Display search results
+        resultsContainer.innerHTML = '';
+        recipes.forEach(rec => {
+          const li = document.createElement('li');
+          li.textContent = rec.title;
+          li.addEventListener('click', () => showRecipe(rec.id));
+          resultsContainer.appendChild(li);
+        });
+        recipeContainer.innerHTML = '<p>Click a recipe to see details!</p>';
+      } catch(err) {
+        resultsContainer.innerHTML = '<li>Error fetching recipes.</li>';
+        recipeContainer.innerHTML = `<p>${err.message}</p>`;
+        console.error(err);
+      }
+    });
+
+    // Show recipe details
+    async function showRecipe(id) {
+      recipeContainer.innerHTML = '<p>Loading recipe...</p>';
+      try {
+        const res = await Promise.race([
+          fetch(`https://forkify-api.herokuapp.com/api/v2/recipes/${id}`),
+          timeout(10)
+        ]);
+        const data = await res.json();
+        const rec = data.data.recipe;
+        recipeContainer.innerHTML = `
+          <h2>${rec.title}</h2>
+          <p><strong>Publisher:</strong> ${rec.publisher}</p>
+          <p><strong>Servings:</strong> ${rec.servings}</p>
+          <p><strong>Cooking time:</strong> ${rec.cooking_time} min</p>
+          <img src="${rec.image_url}" alt="${rec.title}" style="width:100%; max-width:400px; border-radius:8px;" />
+          <p><a href="${rec.source_url}" target="_blank">View full directions</a></p>
+        `;
+      } catch(err) {
+        recipeContainer.innerHTML = `<p>${err.message}</p>`;
+        console.error(err);
+      }
+    }
+  </script>
+</body>
+</html>
